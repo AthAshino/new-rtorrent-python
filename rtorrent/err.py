@@ -18,6 +18,23 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from rtorrent9.compat import xmlrpclib
+from rtorrent.common import convert_version_tuple_to_str
 
-HTTPServerProxy = xmlrpclib.ServerProxy
+
+class RTorrentVersionError(Exception):
+    def __init__(self, min_version, cur_version):
+        self.min_version = min_version
+        self.cur_version = cur_version
+        self.msg = "Minimum version required: {0}".format(
+            convert_version_tuple_to_str(min_version))
+
+    def __str__(self):
+        return(self.msg)
+
+
+class MethodError(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self):
+        return(self.msg)

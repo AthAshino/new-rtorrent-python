@@ -17,7 +17,7 @@ classifiers = [
 ]
 
 setup(
-    name="rtorrent9",
+    name="rtorrent",
     version='1.0.0-alpha',
     url='https://github.com/sickchill/rtorrent-python',
     author='Chris Lucas',
