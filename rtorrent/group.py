@@ -81,4 +81,4 @@ class Group:
             *methods
         )
 
-        return(m.call()[-1])
+        return m.call()[-1]

@@ -20,44 +20,45 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from base64 import encodestring
-import string
-import xmlrpclib
+from base64 import encodebytes
+import xmlrpc.client
 
 
-class BasicAuthTransport(xmlrpclib.Transport):
+class BasicAuthTransport(xmlrpc.client.Transport):
     def __init__(self, username=None, password=None):
-        xmlrpclib.Transport.__init__(self)
+        xmlrpc.client.Transport.__init__(self)
 
         self.username = username
         self.password = password
+        self.verbose = False
 
     def send_auth(self, h):
         if self.username is not None and self.password is not None:
-            h.putheader('AUTHORIZATION', "Basic %s" % string.replace(
-                encodestring("%s:%s" % (self.username, self.password)),
-                "\012", ""
-            ))
+            h.putheader('AUTHORIZATION', "Basic {}".format(encodebytes("{}:{}".format(self.username, self.password)).replace("\012", "")))
 
     def single_request(self, host, handler, request_body, verbose=0):
         # issue XML-RPC request
-
-        h = self.make_connection(host)
-        if verbose:
-            h.set_debuglevel(1)
-
         try:
-            self.send_request(h, handler, request_body)
-            self.send_host(h, host)
-            self.send_user_agent(h)
-            self.send_auth(h)
-            self.send_content(h, request_body)
+            connection = self.make_connection(host)
+            headers = self._extra_headers[:]
+            if verbose:
+                connection.set_debuglevel(1)
+            if self.accept_gzip_encoding :
+                connection.putrequest("POST", handler, skip_accept_encoding=True)
+                headers.append(("Accept-Encoding", "gzip"))
+            else:
+                connection.putrequest("POST", handler)
+            headers.append(("Content-Type", "text/xml"))
+            headers.append(("User-Agent", self.user_agent))
+            self.send_headers(connection, headers)
+            self.send_auth(connection)
+            self.send_content(connection, request_body)
 
-            response = h.getresponse(buffering=True)
+            response = connection.getresponse(buffering=True)
             if response.status == 200:
                 self.verbose = verbose
                 return self.parse_response(response)
-        except xmlrpclib.Fault:
+        except xmlrpc.client.Fault:
             raise
         except Exception:
             self.close()
@@ -66,7 +67,7 @@ class BasicAuthTransport(xmlrpclib.Transport):
         #discard any response data and raise exception
         if response.getheader("content-length", 0):
             response.read()
-        raise xmlrpclib.ProtocolError(
+        raise xmlrpc.client.ProtocolError(
             host + handler,
             response.status, response.reason,
             response.msg,

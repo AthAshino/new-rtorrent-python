@@ -3,8 +3,6 @@ import os, sys
 
 # version = __import__('rtorrent').__version__
 
-required_pkgs = []
-
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -17,7 +15,7 @@ classifiers = [
 ]
 
 setup(
-    name="rtorrent",
+    name="new-rtorrent-python",
     version='1.0.0-alpha',
     url='https://github.com/sickchill/rtorrent-python',
     author='Chris Lucas',
@@ -29,7 +27,14 @@ setup(
     license="MIT",
     packages=find_packages(),
     scripts=[],
-    install_requires=required_pkgs,
+    install_requires=[
+        'bencodepy',
+        'requests'
+    ],
+    tests_require=[
+        'nose'
+    ],
+    test_suite='nose.collector',
     classifiers=classifiers,
     include_package_data=True,
 )

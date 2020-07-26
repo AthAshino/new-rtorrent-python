@@ -21,8 +21,6 @@
 # from rtorrent.rpc import Method
 import rtorrent.rpc
 
-from rtorrent.common import safe_repr
-
 Method = rtorrent.rpc.Method
 
 
@@ -33,11 +31,10 @@ class File:
         self._rt_obj = _rt_obj
         self.info_hash = info_hash  # : info hash for the torrent the file is associated with
         self.index = index  # : The position of the file within the file list
-        for k in kwargs.keys():
+        for k in kwargs:
             setattr(self, k, kwargs.get(k, None))
 
-        self.rpc_id = "{0}:f{1}".format(
-            self.info_hash, self.index)  # : unique id to pass to rTorrent
+        self.rpc_id = "{0}:f{1}".format(self.info_hash, self.index)  # : unique id to pass to rTorrent
 
     def update(self):
         """Refresh file data
@@ -55,7 +52,8 @@ class File:
         multicall.call()
 
     def __repr__(self):
-        return safe_repr("File(index={0} path=\"{1}\")", self.index, self.path)
+        return "File(index={0} path=\"{1}\")".format(self.index, self.path)
+
 
 methods = [
     # RETRIEVERS

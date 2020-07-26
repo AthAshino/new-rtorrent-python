@@ -16,6 +16,7 @@ def valmap(from_list, to_list, arg_index):
 
     return func
 
+
 class RPCMethod(object):
     def __init__(self, method_names, *args, **kwargs):
         if isinstance(method_names, str):

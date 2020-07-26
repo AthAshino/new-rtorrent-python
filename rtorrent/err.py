@@ -29,7 +29,7 @@ class RTorrentVersionError(Exception):
             convert_version_tuple_to_str(min_version))
 
     def __str__(self):
-        return(self.msg)
+        return self.msg
 
 
 class MethodError(Exception):
@@ -37,4 +37,4 @@ class MethodError(Exception):
         self.msg = msg
 
     def __str__(self):
-        return(self.msg)
+        return self.msg

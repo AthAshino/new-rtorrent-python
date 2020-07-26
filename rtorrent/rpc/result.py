@@ -2,6 +2,7 @@ import collections
 
 from rtorrent.rpc.call import RPCCall
 
+
 class RPCResult(object):
     def __init__(self, rpc_calls: [RPCCall], results):
         self._rpc_calls_results_map = collections.OrderedDict()

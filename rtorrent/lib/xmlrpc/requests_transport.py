@@ -20,10 +20,7 @@ Support:
 -Proxies
 """
 
-try:
-    import xmlrpc.client as xmlrpc_client
-except ImportError:
-    import xmlrpclib as xmlrpc_client
+import xmlrpc.client
 
 import traceback
 
@@ -34,7 +31,7 @@ from requests.auth import HTTPDigestAuth
 from requests.packages.urllib3 import disable_warnings  # @UnresolvedImport
 
 
-class RequestsTransport(xmlrpc_client.Transport):
+class RequestsTransport(xmlrpc.client.Transport):
 
     """Transport class for xmlrpc using requests"""
 
@@ -55,11 +52,7 @@ class RequestsTransport(xmlrpc_client.Transport):
         Raises:
             ValueError: Invalid info
         """
-        # Python 2 can't use super on old style class.
-        if issubclass(xmlrpc_client.Transport, object):
-            super(RequestsTransport, self).__init__()
-        else:
-            xmlrpc_client.Transport.__init__(self)
+        super().__init__()
 
         self.user_agent = "Python Requests/" + requests.__version__
 
@@ -105,50 +98,24 @@ class RequestsTransport(xmlrpc_client.Transport):
         if not self._check_ssl_cert:
             disable_warnings()
 
-        headers = {'User-Agent': self.user_agent, 'Content-Type': 'text/xml', }
+        kwargs = dict(
+            url="{schema}://{host}/{handler}".format(schema=('http', 'https')[self._use_https], host=host, handler=handler),
+            data=request_body,
+            headers={'User-Agent': self.user_agent, 'Content-Type': 'text/xml'},
+            verify=self._check_ssl_cert,
+            proxies=self._proxies)
 
-        # Need to be done because the schema(http or https) is lost in
-        # xmlrpc.Transport's init.
-        if self._use_https:
-            url = "https://{host}/{handler}".format(host=host, handler=handler)
-        else:
-            url = "http://{host}/{handler}".format(host=host, handler=handler)
+        if self._authtype == "basic":
+            kwargs.update(auth=HTTPBasicAuth(self._username, self._password))
+        elif self._authtype == "digest":
+            kwargs.update(auth=HTTPDigestAuth(self._username, self._password))
 
-        # TODO Construct kwargs query instead
+        response = None
         try:
-            if self._authtype == "basic":
-                response = requests.post(
-                    url,
-                    data=request_body,
-                    headers=headers,
-                    verify=self._check_ssl_cert,
-                    auth=HTTPBasicAuth(
-                        self._username, self._password),
-                    proxies=self._proxies)
-            elif self._authtype == "digest":
-                response = requests.post(
-                    url,
-                    data=request_body,
-                    headers=headers,
-                    verify=self._check_ssl_cert,
-                    auth=HTTPDigestAuth(
-                        self._username, self._password),
-                    proxies=self._proxies)
-            else:
-                response = requests.post(
-                    url,
-                    data=request_body,
-                    headers=headers,
-                    verify=self._check_ssl_cert,
-                    proxies=self._proxies)
-
+            response = requests.post(**kwargs)
             response.raise_for_status()
         except RequestException as error:
-            raise xmlrpc_client.ProtocolError(url,
-                                              error.message,
-                                              traceback.format_exc(),
-                                              response.headers)
-
+            raise xmlrpc.client.ProtocolError(kwargs['url'], error, traceback.format_exc(), response.headers)
         return self.parse_response(response)
 
     def parse_response(self, response):
@@ -174,12 +141,9 @@ class RequestsTransport(xmlrpc_client.Transport):
         """
         # TODO Ugly
         import logging
-        try:
-            import http.client as http_client
-        except ImportError:
-            import httplib as http_client
+        import http.client
 
-        http_client.HTTPConnection.debuglevel = 1
+        http.client.HTTPConnection.debuglevel = 1
 
         logging.basicConfig()
         logging.getLogger().setLevel(logging.DEBUG)

@@ -81,32 +81,34 @@
 # ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
 # OF THIS SOFTWARE.
 
-import httplib
+import errno
+import http.client
 import re
 import socket
-import urllib
-import xmlrpclib
-import errno
+import urllib.error
+import urllib.parse
+import urllib.request
+import xmlrpc.client
 
 
-class SCGITransport(xmlrpclib.Transport):
+class SCGITransport(xmlrpc.client.Transport):
     # Added request() from Python 2.7 xmlrpclib here to backport to Python 2.6
     def request(self, host, handler, request_body, verbose=0):
         #retry request once if cached connection has gone cold
         for i in (0, 1):
             try:
                 return self.single_request(host, handler, request_body, verbose)
-            except socket.error, e:
+            except socket.error as e:
                 if i or e.errno not in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
                     raise
-            except httplib.BadStatusLine: #close after we sent request
+            except http.client.BadStatusLine: #close after we sent request
                 if i:
                     raise
 
     def single_request(self, host, handler, request_body, verbose=0):
         # Add SCGI headers to the request.
         headers = {'CONTENT_LENGTH': str(len(request_body)), 'SCGI': '1'}
-        header = '\x00'.join(('%s\x00%s' % item for item in headers.iteritems())) + '\x00'
+        header = '\x00'.join(('%s\x00%s' % item for item in headers.items())) + '\x00'
         header = '%d:%s' % (len(header), header)
         request_body = '%s,%s' % (header, request_body)
 
@@ -114,7 +116,7 @@ class SCGITransport(xmlrpclib.Transport):
 
         try:
             if host:
-                host, port = urllib.splitport(host)
+                host, port = urllib.parse.splitport(host)
                 addrinfo = socket.getaddrinfo(host, int(port), socket.AF_INET,
                                               socket.SOCK_STREAM)
                 sock = socket.socket(*addrinfo[0][:3])
@@ -125,7 +127,7 @@ class SCGITransport(xmlrpclib.Transport):
 
             self.verbose = verbose
 
-            sock.send(request_body)
+            sock.send(request_body.encode('utf-8'))
             return self.parse_response(sock.makefile())
         finally:
             if sock:
@@ -146,7 +148,7 @@ class SCGITransport(xmlrpclib.Transport):
                                                   maxsplit=1)
 
         if self.verbose:
-            print 'body:', repr(response_body)
+            print('body:', repr(response_body))
 
         p.feed(response_body)
         p.close()
@@ -154,13 +156,13 @@ class SCGITransport(xmlrpclib.Transport):
         return u.close()
 
 
-class SCGIServerProxy(xmlrpclib.ServerProxy):
+class SCGIServerProxy(xmlrpc.client.ServerProxy):
     def __init__(self, uri, transport=None, encoding=None, verbose=False,
                  allow_none=False, use_datetime=False):
-        type, uri = urllib.splittype(uri)
+        type, uri = urllib.parse.splittype(uri)
         if type not in ('scgi'):
             raise IOError('unsupported XML-RPC protocol')
-        self.__host, self.__handler = urllib.splithost(uri)
+        self.__host, self.__handler = urllib.parse.splithost(uri)
         if not self.__handler:
             self.__handler = '/'
 
@@ -178,7 +180,7 @@ class SCGIServerProxy(xmlrpclib.ServerProxy):
     def __request(self, methodname, params):
         # call a method on the remote server
 
-        request = xmlrpclib.dumps(params, methodname, encoding=self.__encoding,
+        request = xmlrpc.client.dumps(params, methodname, encoding=self.__encoding,
                                   allow_none=self.__allow_none)
 
         response = self.__transport.request(
@@ -203,7 +205,7 @@ class SCGIServerProxy(xmlrpclib.ServerProxy):
 
     def __getattr__(self, name):
         # magic method dispatcher
-        return xmlrpclib._Method(self.__request, name)
+        return xmlrpc.client._Method(self.__request, name)
 
     # note: to call a remote object with an non-standard name, use
     # result getattr(server, "strange-python-name")(args)

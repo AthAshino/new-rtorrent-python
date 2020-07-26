@@ -1,5 +1,6 @@
 from rtorrent.rpc.method import RPCMethod
 
+
 class RPCCall(object):
     def __init__(self, rpc_method: RPCMethod, *args):
         self.rpc_method = rpc_method

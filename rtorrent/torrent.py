@@ -23,9 +23,6 @@ import rtorrent.rpc
 import rtorrent.peer
 import rtorrent.tracker
 import rtorrent.file
-import rtorrent.compat
-
-from rtorrent.common import safe_repr
 
 Peer = rtorrent.peer.Peer
 Tracker = rtorrent.tracker.Tracker
@@ -40,18 +37,19 @@ class Torrent:
         self._rt_obj = _rt_obj
         self.info_hash = info_hash  # : info hash for the torrent
         self.rpc_id = self.info_hash  # : unique id to pass to rTorrent
-        for k in kwargs.keys():
+        for k in kwargs:
             setattr(self, k, kwargs.get(k, None))
 
+        self.name = ""
         self.peers = []
         self.trackers = []
         self.files = []
 
-        self._call_custom_methods()
+        if self._rt_obj:
+            self._call_custom_methods()
 
     def __repr__(self):
-        return safe_repr("Torrent(info_hash=\"{0}\" name=\"{1}\")",
-                        self.info_hash, self.name)
+        return "Torrent(info_hash=\"{0}\" name=\"{1}\")".format(self.info_hash, self.name)
 
     def _call_custom_methods(self):
         """only calls methods that check instance variables."""
@@ -86,7 +84,7 @@ class Torrent:
             self.peers.append(Peer(
                 self._rt_obj, self.info_hash, **results_dict))
 
-        return(self.peers)
+        return self.peers
 
     def get_trackers(self):
         """Get list of Tracker instances for given torrent.
@@ -116,7 +114,7 @@ class Torrent:
             self.trackers.append(Tracker(
                 self._rt_obj, self.info_hash, **results_dict))
 
-        return(self.trackers)
+        return self.trackers
 
     def get_files(self):
         """Get list of File instances for given torrent.
@@ -157,13 +155,13 @@ class Torrent:
             self.files.append(File(self._rt_obj, self.info_hash,
                                    f_index, **results_dict))
 
-        return(self.files)
+        return self.files
 
     def get_state(self):
         m = rtorrent.rpc.Multicall(self)
         self.multicall_add(m, 'd.state')
 
-        return(m.call()[-1])
+        return m.call()[-1]
 
     def set_directory(self, d):
         """Modify download directory
@@ -196,7 +194,7 @@ class Torrent:
         self.multicall_add(m, "d.is_active")
 
         self.active = m.call()[-1]
-        return(self.active)
+        return self.active
 
     def stop(self):
         """"Stop the torrent"""
@@ -205,28 +203,28 @@ class Torrent:
         self.multicall_add(m, "d.is_active")
 
         self.active = m.call()[-1]
-        return(self.active)
+        return self.active
 
     def pause(self):
         """Pause the torrent"""
         m = rtorrent.rpc.Multicall(self)
         self.multicall_add(m, "d.pause")
 
-        return(m.call()[-1])
+        return m.call()[-1]
 
     def resume(self):
         """Resume the torrent"""
         m = rtorrent.rpc.Multicall(self)
         self.multicall_add(m, "d.resume")
 
-        return(m.call()[-1])
+        return m.call()[-1]
 
     def close(self):
         """Close the torrent and it's files"""
         m = rtorrent.rpc.Multicall(self)
         self.multicall_add(m, "d.close")
 
-        return(m.call()[-1])
+        return m.call()[-1]
 
     def erase(self):
         """Delete the torrent
@@ -235,14 +233,14 @@ class Torrent:
         m = rtorrent.rpc.Multicall(self)
         self.multicall_add(m, "d.erase")
 
-        return(m.call()[-1])
+        return m.call()[-1]
 
     def check_hash(self):
         """(Re)hash check the torrent"""
         m = rtorrent.rpc.Multicall(self)
         self.multicall_add(m, "d.check_hash")
 
-        return(m.call()[-1])
+        return m.call()[-1]
 
     def poll(self):
         """poll rTorrent to get latest peer/tracker/file information"""
@@ -282,19 +280,18 @@ class Torrent:
         m = rtorrent.rpc.Multicall(self)
         self.multicall_add(m, call)
 
-        return(m.call()[-1])
+        return m.call()[-1]
 
     def announce(self):
         """Announce torrent info to tracker(s)"""
         m = rtorrent.rpc.Multicall(self)
         self.multicall_add(m, "d.tracker_announce")
 
-        return(m.call()[-1])
+        return m.call()[-1]
 
     @staticmethod
     def _assert_custom_key_valid(key):
-        assert type(key) == int and key > 0 and key < 6, \
-            "key must be an integer between 1-5"
+        assert type(key) == int and 0 < key < 6, "key must be an integer between 1-5"
 
     def get_custom(self, key):
         """
@@ -334,7 +331,7 @@ class Torrent:
 
         self.multicall_add(m, "d.custom{0}.set".format(key), value)
 
-        return(m.call()[-1])
+        return m.call()[-1]
 
     def set_visible(self, view, visible=True):
         p = self._rt_obj._get_conn()
@@ -447,6 +444,8 @@ methods = [
            boolean=True,
            ),
     Method(Torrent, 'get_hashing', 'd.hashing'),
+    Method(Torrent, 'get_hashing_failed', 'd.hashing_failed'),
+    Method(Torrent, 'get_info_hash', 'd.hash'),
     Method(Torrent, 'get_bitfield', 'd.bitfield'),
     Method(Torrent, 'get_local_id_html', 'd.local_id_html'),
     Method(Torrent, 'get_connection_leech', 'd.connection_leech'),

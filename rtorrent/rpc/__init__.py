@@ -21,10 +21,9 @@
 import inspect
 import rtorrent
 import re
-from rtorrent.common import bool_to_int, convert_version_tuple_to_str,\
-    safe_repr
+from rtorrent.common import bool_to_int, convert_version_tuple_to_str
 from rtorrent.err import MethodError
-from rtorrent.compat import xmlrpclib
+import xmlrpc.client
 
 
 def get_varname(rpc_call):
@@ -66,8 +65,8 @@ class Method:
         self.rpc_call = rpc_call  # : name of rpc method
         self.docstring = docstring  # : docstring for rpc method (optional)
         self.varname = varname  # : variable for the result of the method call, usually set to self.varname
-        self.min_version = kwargs.get("min_version", (
-            0, 0, 0))  # : Minimum version of rTorrent required
+        self.min_version = kwargs.get("min_version", (0, 0, 0))  # : Minimum version of rTorrent required
+        self.max_version = kwargs.get("max_version", (0, 0, 0))  # : Minimum version of rTorrent required
         self.boolean = kwargs.get("boolean", False)  # : returns boolean value?
         self.post_process_func = kwargs.get(
             "post_process_func", None)  # : custom post process function
@@ -83,33 +82,20 @@ class Method:
         assert self.varname is not None, "Couldn't get variable name."
 
     def __repr__(self):
-        return safe_repr("Method(method_name='{0}', rpc_call='{1}')",
-                        self.method_name, self.rpc_call)
+        return "Method(method_name='{0}', rpc_call='{1}')".format(self.method_name, self.rpc_call)
 
     def _get_method_type(self):
         """Determine whether method is a modifier or a retriever"""
-        if self.method_name[:4] == "set_": return('m')  # modifier
-        else:
-            return('r')  # retriever
+        return ("r", "m")[self.method_name[:4] == "set_"]
 
     def is_modifier(self):
-        if self.method_type == 'm':
-            return(True)
-        else:
-            return(False)
+        return self.method_type == 'm'
 
     def is_retriever(self):
-        if self.method_type == 'r':
-            return(True)
-        else:
-            return(False)
+        return self.method_type == 'r'
 
     def is_available(self, rt_obj):
-        if rt_obj._get_client_version_tuple() < self.min_version or \
-                self.rpc_call not in rt_obj._get_rpc_methods():
-            return(False)
-        else:
-            return(True)
+        return not (rt_obj._get_client_version_tuple() < self.min_version or self.rpc_call not in rt_obj._get_rpc_methods())
 
 
 class Multicall:
@@ -156,7 +142,7 @@ class Multicall:
         @return: the results (post-processed), in the order they were added
         @rtype: tuple
         """
-        m = xmlrpclib.MultiCall(self.rt_obj._get_conn())
+        m = xmlrpc.client.MultiCall(self.rt_obj._get_conn())
         for call in self.calls:
             method, args = call
             rpc_call = getattr(method, "rpc_call")
@@ -175,7 +161,7 @@ class Multicall:
             if not exists or not inspect.ismethod(getattr(self.class_obj, method.varname)):
                 setattr(self.class_obj, method.varname, result)
 
-        return(tuple(results_processed))
+        return tuple(results_processed)
 
 
 def call_method(class_obj, method, *args):
@@ -216,7 +202,7 @@ def call_method(class_obj, method, *args):
     #    value = process_result(method, args[-1])
     ##########################################################################
 
-    return(ret_value)
+    return ret_value
 
 
 def find_method(rpc_call):
@@ -232,9 +218,9 @@ def find_method(rpc_call):
     for l in method_lists:
         for m in l:
             if m.rpc_call.lower() == rpc_call.lower():
-                return(m)
+                return m
 
-    return(-1)
+    return -1
 
 
 def process_result(method, result):
@@ -260,7 +246,7 @@ def process_result(method, result):
         elif result in [0, '0']:
             result = False
 
-    return(result)
+    return result
 
 
 def _build_rpc_methods(class_, method_list):

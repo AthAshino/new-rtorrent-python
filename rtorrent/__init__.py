@@ -17,16 +17,16 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import os.path
 import time
-import xmlrpclib
+import xmlrpc.client
 
 from rtorrent.common import (find_torrent,  # @UnresolvedImport
                              is_valid_port,  # @UnresolvedImport
                              convert_version_tuple_to_str)  # @UnresolvedImport
 from rtorrent.lib.torrentparser import TorrentParser  # @UnresolvedImport
-from rtorrent.lib.xmlrpc.http import HTTPServerProxy  # @UnresolvedImport
+from xmlrpc.client import ServerProxy
 from rtorrent.lib.xmlrpc.scgi import SCGIServerProxy  # @UnresolvedImport
 from rtorrent.rpc import Method  # @UnresolvedImport
 from rtorrent.lib.xmlrpc.requests_transport import RequestsTransport  # @UnresolvedImport @IgnorePep8
@@ -56,12 +56,12 @@ class RTorrent:
         self.username = username
         self.password = password
 
-        self.schema = urllib.splittype(uri)[0]
+        self.schema = urllib.parse.urlsplit(uri).scheme
 
         if sp:
             self.sp = sp
         elif self.schema in ['http', 'https']:
-            self.sp = HTTPServerProxy
+            self.sp = ServerProxy
             if self.schema == 'https':
                 self.isHttps = True
             else:
@@ -159,7 +159,7 @@ class RTorrent:
         @rtype: list
         """
 
-        return(self._rpc_methods or self._update_rpc_methods())
+        return self._rpc_methods or self._update_rpc_methods()
 
     def get_torrents(self, view="main"):
         """Get list of all torrents in specified view
@@ -193,7 +193,7 @@ class RTorrent:
             )
 
         self._manage_torrent_cache()
-        return(self.torrents)
+        return self.torrents
 
     def _manage_torrent_cache(self):
         """Carry tracker/peer/file lists over to new torrent list"""
@@ -230,7 +230,7 @@ class RTorrent:
             else:
                 func_name = "load.raw"
 
-        return(func_name)
+        return func_name
 
     def load_magnet(self, magneturl, info_hash, **kwargs):
         start = kwargs.pop('start', False)
@@ -295,7 +295,7 @@ class RTorrent:
 
         p = self._get_conn()
         tp = TorrentParser(torrent)
-        torrent = xmlrpclib.Binary(tp._raw_torrent)
+        torrent = xmlrpc.client.Binary(tp._raw_torrent)
         info_hash = tp.info_hash
 
         func_name = self._get_load_function('raw', start, verbose)
@@ -355,7 +355,7 @@ class RTorrent:
             torrent = open(torrent, 'rb').read()
 
         if file_type in ['raw', 'file']:
-            finput = xmlrpclib.Binary(torrent)
+            finput = xmlrpc.client.Binary(torrent)
         elif file_type == 'url':
             finput = torrent
 
@@ -405,7 +405,7 @@ class RTorrent:
 
     def find_torrent(self, info_hash):
         """Frontend for rtorrent.common.find_torrent"""
-        return(rtorrent.common.find_torrent(info_hash, self.get_torrents()))
+        return rtorrent.common.find_torrent(info_hash, self.get_torrents())
 
     def poll(self):
         """ poll rTorrent to get latest torrent/peer/tracker/file information
@@ -646,6 +646,6 @@ class_methods_pair = {
     rtorrent.tracker.Tracker: rtorrent.tracker.methods,
     rtorrent.peer.Peer: rtorrent.peer.methods,
 }
-for c in class_methods_pair.keys():
-    rtorrent.rpc._build_rpc_methods(c, class_methods_pair[c])
-    _build_class_methods(c)
+for key, value in class_methods_pair.items():
+    rtorrent.rpc._build_rpc_methods(key, value)
+    _build_class_methods(value)

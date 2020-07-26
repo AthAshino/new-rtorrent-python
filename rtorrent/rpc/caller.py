@@ -5,6 +5,7 @@ from rtorrent.rpc.method import RPCMethod
 
 import xmlrpc.client
 
+
 class RPCCaller(object):
     def __init__(self, context):
         self.context = context
@@ -40,7 +41,6 @@ class RPCCaller(object):
             results.append(result)
 
         return RPCResult(self.calls, results)
-
 
     def _get_method_name(self, rpc_method: RPCMethod):
         if self.available_methods is None:

@@ -15,7 +15,7 @@ def choose(arg):
         if isinstance(arg, int):
             return args[arg]
         elif isinstance(arg, (list, range)):
-            return list(map(lambda i: args[i], arg))
+            return list([args[i] for i in arg])
         else:
             raise AttributeError('Unhandled type {0}'.format(type(arg)))
 
