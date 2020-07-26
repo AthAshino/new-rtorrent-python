@@ -20,15 +20,13 @@ Support:
 -Proxies
 """
 
+import traceback
 import xmlrpc.client
 
-import traceback
-
 import requests
+from requests.auth import HTTPBasicAuth, HTTPDigestAuth
 from requests.exceptions import RequestException
-from requests.auth import HTTPBasicAuth
-from requests.auth import HTTPDigestAuth
-from requests.packages.urllib3 import disable_warnings  # @UnresolvedImport
+from requests.packages.urllib3 import disable_warnings
 
 
 class RequestsTransport(xmlrpc.client.Transport):
@@ -140,8 +138,8 @@ class RequestsTransport(xmlrpc.client.Transport):
         Enable verbose logging from requests
         """
         # TODO Ugly
-        import logging
         import http.client
+        import logging
 
         http.client.HTTPConnection.debuglevel = 1
 

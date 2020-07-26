@@ -20,8 +20,8 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from base64 import encodebytes
 import xmlrpc.client
+from base64 import encodebytes
 
 
 class BasicAuthTransport(xmlrpc.client.Transport):

@@ -1,9 +1,8 @@
-from rtorrent.rpc.call import RPCCall
-from rtorrent.rpc.result import RPCResult
-from rtorrent.rpc.method import RPCMethod
-
-
 import xmlrpc.client
+
+from .call import RPCCall
+from .method import RPCMethod
+from .result import RPCResult
 
 
 class RPCCaller(object):

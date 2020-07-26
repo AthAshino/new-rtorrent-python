@@ -1,6 +1,6 @@
 import unittest
 
-from rtorrent.torrent import Torrent
+from .torrent import Torrent
 
 INFO_HASH = '1D226C20D67F8F2DDEE4FD99A880974B3F2B6F1E'
 

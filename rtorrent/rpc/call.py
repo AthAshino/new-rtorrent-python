@@ -1,4 +1,4 @@
-from rtorrent.rpc.method import RPCMethod
+from .method import RPCMethod
 
 
 class RPCCall(object):

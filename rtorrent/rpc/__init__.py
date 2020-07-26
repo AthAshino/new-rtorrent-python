@@ -19,11 +19,12 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import inspect
-import rtorrent
 import re
+import xmlrpc.client
+
+import rtorrent
 from rtorrent.common import bool_to_int, convert_version_tuple_to_str
 from rtorrent.err import MethodError
-import xmlrpc.client
 
 
 def get_varname(rpc_call):

@@ -1,7 +1,7 @@
 import datetime
 import unittest
 
-from rtorrent.file import File
+from .file import File
 
 INFO_HASH = '1D226C20D67F8F2DDEE4FD99A880974B3F2B6F1E'
 

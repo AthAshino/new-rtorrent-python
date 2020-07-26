@@ -1,6 +1,6 @@
 import collections
 
-from rtorrent.rpc.call import RPCCall
+from .call import RPCCall
 
 
 class RPCResult(object):

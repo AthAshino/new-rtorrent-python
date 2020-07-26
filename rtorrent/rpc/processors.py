@@ -1,5 +1,6 @@
 import datetime
 
+
 def valmap(from_list, to_list, index=0):
     assert len(from_list) == len(to_list)
     def inner(*args):

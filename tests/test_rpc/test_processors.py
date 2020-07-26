@@ -1,4 +1,4 @@
-from rtorrent.rpc.processors import *
+from .rpc.processors import *
 
 import unittest
 

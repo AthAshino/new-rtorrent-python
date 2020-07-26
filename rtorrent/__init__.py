@@ -17,26 +17,30 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-import urllib.request, urllib.parse, urllib.error
 import os.path
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 import xmlrpc.client
-
-from rtorrent.common import (find_torrent,  # @UnresolvedImport
-                             is_valid_port,  # @UnresolvedImport
-                             convert_version_tuple_to_str)  # @UnresolvedImport
-from rtorrent.lib.torrentparser import TorrentParser  # @UnresolvedImport
 from xmlrpc.client import ServerProxy
-from rtorrent.lib.xmlrpc.scgi import SCGIServerProxy  # @UnresolvedImport
-from rtorrent.rpc import Method  # @UnresolvedImport
-from rtorrent.lib.xmlrpc.requests_transport import RequestsTransport  # @UnresolvedImport @IgnorePep8
-from rtorrent.torrent import Torrent  # @UnresolvedImport
-from rtorrent.group import Group  # @UnresolvedImport
-import rtorrent.rpc  # @UnresolvedImport
+
+import rtorrent.file
+import rtorrent.peer
+import rtorrent.rpc
+import rtorrent.tracker
+from rtorrent.common import convert_version_tuple_to_str, is_valid_port
+from rtorrent.group import Group
+from rtorrent.lib.torrentparser import TorrentParser
+from rtorrent.lib.xmlrpc.requests_transport import RequestsTransport
+from rtorrent.lib.xmlrpc.scgi import SCGIServerProxy
+from rtorrent.rpc import Method
+from rtorrent.torrent import Torrent
 
 __version__ = "0.2.9"
 __author__ = "Chris Lucas"
-__contact__ = "chris@chrisjlucas.com"
+__maintainer__ = "Dustyn Gibson"
+__contact__ = "miigotu@gmail.com"
 __license__ = "MIT"
 
 MIN_RTORRENT_VERSION = (0, 9, 0)
@@ -171,11 +175,11 @@ class RTorrent:
         @todo: add validity check for specified view
         """
         self.torrents = []
-        methods = rtorrent.torrent.methods
+        methods = torrent.methods
         retriever_methods = [m for m in methods
                              if m.is_retriever() and m.is_available(self)]
 
-        m = rtorrent.rpc.Multicall(self)
+        m = rpc.Multicall(self)
         m.add("d.multicall2", '', view, "d.hash=",
               *[method.rpc_call + "=" for method in retriever_methods])
 
@@ -186,7 +190,7 @@ class RTorrent:
             # build results_dict
             # result[0] is the info_hash
             for m, r in zip(retriever_methods, result[1:]):
-                results_dict[m.varname] = rtorrent.rpc.process_result(m, r)
+                results_dict[m.varname] = rpc.process_result(m, r)
 
             self.torrents.append(
                 Torrent(self, info_hash=result[0], **results_dict)
@@ -198,7 +202,7 @@ class RTorrent:
     def _manage_torrent_cache(self):
         """Carry tracker/peer/file lists over to new torrent list"""
         for torrent in self._torrent_cache:
-            new_torrent = rtorrent.common.find_torrent(torrent.info_hash,
+            new_torrent = common.find_torrent(torrent.info_hash,
                                                        self.torrents)
             if new_torrent is not None:
                 new_torrent.files = torrent.files
@@ -354,9 +358,10 @@ class RTorrent:
 
             torrent = open(torrent, 'rb').read()
 
+        finput = None
         if file_type in ['raw', 'file']:
             finput = xmlrpc.client.Binary(torrent)
-        elif file_type == 'url':
+        elif file_type in ['url', 'magnet']:
             finput = torrent
 
         getattr(p, func_name)(target, finput, *params)
@@ -380,9 +385,9 @@ class RTorrent:
     def get_group(self, name):
         assert name is not None, "group name required"
 
-        group = Group(self, name)
-        group.update()
-        return group
+        _group = Group(self, name)
+        _group.update()
+        return _group
 
     def set_dht_port(self, port):
         """Set DHT port
@@ -405,7 +410,7 @@ class RTorrent:
 
     def find_torrent(self, info_hash):
         """Frontend for rtorrent.common.find_torrent"""
-        return rtorrent.common.find_torrent(info_hash, self.get_torrents())
+        return common.find_torrent(info_hash, self.get_torrents())
 
     def poll(self):
         """ poll rTorrent to get latest torrent/peer/tracker/file information
@@ -428,7 +433,7 @@ class RTorrent:
 
         @return: None
         """
-        multicall = rtorrent.rpc.Multicall(self)
+        multicall = rpc.Multicall(self)
         retriever_methods = [m for m in methods
                              if m.is_retriever() and m.is_available(self)]
         for method in retriever_methods:
@@ -642,10 +647,10 @@ _all_methods_list = [methods,
 class_methods_pair = {
     RTorrent: methods,
     rtorrent.file.File: rtorrent.file.methods,
-    rtorrent.torrent.Torrent: rtorrent.torrent.methods,
+    torrent.Torrent: rtorrent.torrent.methods,
     rtorrent.tracker.Tracker: rtorrent.tracker.methods,
     rtorrent.peer.Peer: rtorrent.peer.methods,
 }
 for key, value in class_methods_pair.items():
-    rtorrent.rpc._build_rpc_methods(key, value)
-    _build_class_methods(value)
+    rpc._build_rpc_methods(key, value)
+    _build_class_methods(key)

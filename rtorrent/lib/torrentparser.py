@@ -18,13 +18,13 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import hashlib
 import os.path
 import re
-import bencodepy
-from typing import Union, Dict, Iterable
-import hashlib
-
+from typing import Dict, Iterable, Union
 from urllib.request import urlopen
+
+import bencodepy
 
 
 class TorrentParser(object):
