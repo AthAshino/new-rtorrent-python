@@ -28,7 +28,7 @@ setup(
     packages=find_namespace_packages(
         exclude=[
                 "*.tests", "*.tests.*", "tests.*", "tests",
-                "docs", "docs.*"
+                "doc", "doc.*"
             ]),
     scripts=[],
     install_requires=[
