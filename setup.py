@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup, find_namespace_packages
 import os, sys
 
 # version = __import__('rtorrent').__version__
@@ -25,7 +25,7 @@ setup(
     description='A simple rTorrent interface written in Python',
     keywords="rtorrent p2p",
     license="MIT",
-    packages=find_packages(),
+    packages=find_namespace_packages(),
     scripts=[],
     install_requires=[
         'bencodepy',
