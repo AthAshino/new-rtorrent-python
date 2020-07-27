@@ -25,7 +25,11 @@ setup(
     description='A simple rTorrent interface written in Python',
     keywords="rtorrent p2p",
     license="MIT",
-    packages=find_namespace_packages(),
+    packages=find_namespace_packages(
+        exclude=[
+                "*.tests", "*.tests.*", "tests.*", "tests",
+                "docs", "docs.*"
+            ]),
     scripts=[],
     install_requires=[
         'bencodepy',
