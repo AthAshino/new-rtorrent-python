@@ -9,8 +9,10 @@
 /build
 /dist
 /*egg-info
+/.eggs
 _build
 
 .idea/dictionaries
 .idea/libraries
 .idea/workspace.xml
+.idea/atlassian-ide-plugin.xml
