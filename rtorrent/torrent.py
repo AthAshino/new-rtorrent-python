@@ -39,6 +39,7 @@ class Torrent:
         self.peers = []
         self.trackers = []
         self.files = []
+        self.category = None
         
         for k in kwargs:
             setattr(self, k, kwargs.get(k, None))
@@ -56,6 +57,7 @@ class Torrent:
         self._is_hash_checking_queued()
         self._is_started()
         self._is_paused()
+        self._set_category()
     
     
     def get_peers(self):
@@ -389,6 +391,10 @@ class Torrent:
         setattr(self, "hash_checking", results[1])
         
         return self._is_hash_checking_queued()
+    
+    
+    def _set_category(self):
+        self.category = self.custom1
     
     
     def _is_paused(self):
