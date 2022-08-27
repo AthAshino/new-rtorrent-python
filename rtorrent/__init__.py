@@ -49,19 +49,20 @@ MAX_RETRIES = 5
 
 
 class RTorrent:
-
+    
     """ Create a new rTorrent connection """
     rpc_prefix = None
-
+    
+    
     def __init__(self, uri, username=None, password=None,
                  verify=False, sp=None, sp_kwargs=None, tp_kwargs=None):
         self.uri = uri  # : From X{__init__(self, url)}
-
+        
         self.username = username
         self.password = password
-
+        
         self.schema = urllib.parse.urlsplit(uri).scheme
-
+        
         if sp:
             self.sp = sp
         elif self.schema in ['http', 'https']:
@@ -74,40 +75,41 @@ class RTorrent:
             self.sp = SCGIServerProxy
         else:
             raise NotImplementedError()
-
+        
         self.sp_kwargs = sp_kwargs or {}
-
+        
         self.tp_kwargs = tp_kwargs or {}
-
+        
         self.torrents = []  # : List of L{Torrent} instances
         self._rpc_methods = []  # : List of rTorrent RPC methods
         self._torrent_cache = []
         self._client_version_tuple = ()
-
+        
         if verify is True:
             self._verify_conn()
-
+    
+    
     def _get_conn(self):
         """Get ServerProxy instance"""
         if self.username is not None and self.password is not None:
             if self.schema == 'scgi':
                 raise NotImplementedError()
-
+            
             if 'authtype' not in self.tp_kwargs:
                 authtype = None
             else:
                 authtype = self.tp_kwargs['authtype']
-
+            
             if 'check_ssl_cert' not in self.tp_kwargs:
                 check_ssl_cert = True
             else:
                 check_ssl_cert = self.tp_kwargs['check_ssl_cert']
-
+            
             if 'proxies' not in self.tp_kwargs:
                 proxies = None
             else:
                 proxies = self.tp_kwargs['proxies']
-
+            
             return self.sp(
                 self.uri,
                 transport=RequestsTransport(
@@ -119,52 +121,68 @@ class RTorrent:
                     proxies=proxies),
                 **self.sp_kwargs
             )
-
+        
         return self.sp(self.uri, **self.sp_kwargs)
-
+    
+    
     def _verify_conn(self):
         # check for rpc methods that should be available
         assert "system.client_version" in self._get_rpc_methods(
         ), "Required RPC method not available."
         assert "system.library_version" in self._get_rpc_methods(
         ), "Required RPC method not available."
-
+        
         # minimum rTorrent version check
-        assert self._meets_version_requirement() is True,\
+        assert self._meets_version_requirement() is True, \
             "Error: Minimum rTorrent version required is {0}".format(
-            MIN_RTORRENT_VERSION_STR)
-
+                MIN_RTORRENT_VERSION_STR)
+    
+    
     def _meets_version_requirement(self):
         return self._get_client_version_tuple() >= MIN_RTORRENT_VERSION
-
+    
+    
+    def get_client_version(self):
+        client_version = getattr(self, "client_version")
+        if not client_version:
+            conn = self._get_conn()
+            client_version = conn.system.client_version()
+            setattr(self, "client_version",
+                    client_version)
+        return client_version
+    
+    
     def _get_client_version_tuple(self):
         conn = self._get_conn()
-
+        
         if not self._client_version_tuple:
             if not hasattr(self, "client_version"):
                 setattr(self, "client_version",
                         conn.system.client_version())
-
+            
             rtver = getattr(self, "client_version")
             self._client_version_tuple = tuple([int(i) for i in
                                                 rtver.split(".")])
-
+        
         return self._client_version_tuple
-
+    
+    
     def _update_rpc_methods(self):
         self._rpc_methods = self._get_conn().system.listMethods()
-
+        
         return self._rpc_methods
-
+    
+    
     def _get_rpc_methods(self):
         """ Get list of raw RPC commands
 
         @return: raw RPC commands
         @rtype: list
         """
-
+        
         return self._rpc_methods or self._update_rpc_methods()
-
+    
+    
     def get_torrents(self, view="main"):
         """Get list of all torrents in specified view
 
@@ -178,39 +196,41 @@ class RTorrent:
         methods = torrent.methods
         retriever_methods = [m for m in methods
                              if m.is_retriever() and m.is_available(self)]
-
+        
         m = rpc.Multicall(self)
         m.add("d.multicall2", '', view, "d.hash=",
               *[method.rpc_call + "=" for method in retriever_methods])
-
+        
         results = m.call()[0]  # only sent one call, only need first result
-
+        
         for result in results:
             results_dict = {}
             # build results_dict
             # result[0] is the info_hash
             for m, r in zip(retriever_methods, result[1:]):
                 results_dict[m.varname] = rpc.process_result(m, r)
-
+            
             self.torrents.append(
                 Torrent(self, info_hash=result[0], **results_dict)
             )
-
+        
         self._manage_torrent_cache()
         return self.torrents
-
+    
+    
     def _manage_torrent_cache(self):
         """Carry tracker/peer/file lists over to new torrent list"""
         for torrent in self._torrent_cache:
             new_torrent = common.find_torrent(torrent.info_hash,
-                                                       self.torrents)
+                                              self.torrents)
             if new_torrent is not None:
                 new_torrent.files = torrent.files
                 new_torrent.peers = torrent.peers
                 new_torrent.trackers = torrent.trackers
-
+        
         self._torrent_cache = self.torrents
-
+    
+    
     def _get_load_function(self, file_type, start, verbose):
         """Determine correct "load torrent" RPC method"""
         func_name = None
@@ -233,9 +253,10 @@ class RTorrent:
                 func_name = "load.raw_verbose"
             else:
                 func_name = "load.raw"
-
+        
         return func_name
-
+    
+    
     def load_magnet(self, magneturl, info_hash, **kwargs):
         start = kwargs.pop('start', False)
         verbose = kwargs.pop('verbose', False)
@@ -243,16 +264,16 @@ class RTorrent:
         max_retries = kwargs.pop('max_retries', 5)
         params = kwargs.pop('params', [])
         target = kwargs.pop('target', '')
-
+        
         p = self._get_conn()
-
+        
         info_hash = info_hash.upper()
-
+        
         func_name = self._get_load_function("url", start, verbose)
-
+        
         # load magnet
         getattr(p, func_name)(target, magneturl, *params)
-
+        
         if verify_load:
             i = 0
             while i < max_retries:
@@ -262,9 +283,10 @@ class RTorrent:
                 time.sleep(1)
                 i += 1
             return False
-
+        
         return True
-
+    
+    
     def load_torrent(self, torrent, **kwargs):
         """
         Load torrent into rTorrent (with various enhancements).
@@ -296,16 +318,16 @@ class RTorrent:
         max_retries = kwargs.pop('max_retries', 5)
         params = kwargs.pop('params', [])
         target = kwargs.pop('target', '')
-
+        
         p = self._get_conn()
         tp = TorrentParser(torrent)
         torrent = xmlrpc.client.Binary(tp._raw_torrent)
         info_hash = tp.info_hash
-
+        
         func_name = self._get_load_function('raw', start, verbose)
-
+        
         getattr(p, func_name)(target, torrent, *params)
-
+        
         if verify_load:
             i = 0
             while i < max_retries:
@@ -315,9 +337,10 @@ class RTorrent:
                 time.sleep(1)
                 i += 1
             return False
-
+        
         return True
-
+    
+    
     def load_torrent_simple(self, torrent, file_type, **kwargs):
         """Load torrent into rTorrent.
         @param torrent: can be a url, a path to a local file, or the raw data
@@ -340,55 +363,59 @@ class RTorrent:
         verbose = kwargs.pop('verbose', False)
         params = kwargs.pop('params', [])
         target = kwargs.pop('target', '')
-
+        
         p = self._get_conn()
-
+        
         if file_type not in ['raw', 'file', 'url']:
             print("Invalid file_type, options are: 'url', 'file', 'raw'.")
             return False
-
+        
         func_name = self._get_load_function(file_type, start, verbose)
-
+        
         if file_type == 'file':
             # since we have to assume we're connected to a remote rTorrent
             # client, we have to read the file and send it to rT as raw
             if not os.path.isfile(torrent):
                 print('Invalid path: {0}'.format(torrent))
                 return False
-
+            
             torrent = open(torrent, 'rb').read()
-
+        
         finput = None
         if file_type in ['raw', 'file']:
             finput = xmlrpc.client.Binary(torrent)
         elif file_type in ['url', 'magnet']:
             finput = torrent
-
+        
         getattr(p, func_name)(target, finput, *params)
-
+        
         return True
-
+    
+    
     def get_views(self):
         p = self._get_conn()
         return p.view_list()
-
+    
+    
     def create_group(self, name, persistent=True, view=None):
         p = self._get_conn()
-
+        
         if persistent is True:
             p.group.insert_persistent_view('', name)
         elif view is not None:
             p.group.insert('', name, view)
-
+        
         self._update_rpc_methods()
-
+    
+    
     def get_group(self, name):
         assert name is not None, "group name required"
-
+        
         _group = Group(self, name)
         _group.update()
         return _group
-
+    
+    
     def set_dht_port(self, port):
         """Set DHT port
 
@@ -399,19 +426,23 @@ class RTorrent:
         """
         assert is_valid_port(port), "Valid port range is 0-65535"
         self.dht_port = self._p.set_dht_port(port)
-
+    
+    
     def enable_check_hash(self):
         """Alias for set_check_hash(True)"""
         self.set_check_hash(True)
-
+    
+    
     def disable_check_hash(self):
         """Alias for set_check_hash(False)"""
         self.set_check_hash(False)
-
+    
+    
     def find_torrent(self, info_hash):
         """Frontend for rtorrent.common.find_torrent"""
         return common.find_torrent(info_hash, self.get_torrents())
-
+    
+    
     def poll(self):
         """ poll rTorrent to get latest torrent/peer/tracker/file information
 
@@ -425,7 +456,8 @@ class RTorrent:
         torrents = self.get_torrents()
         for t in torrents:
             t.poll()
-
+    
+    
     def update(self):
         """Refresh rTorrent client info
 
@@ -438,15 +470,15 @@ class RTorrent:
                              if m.is_retriever() and m.is_available(self)]
         for method in retriever_methods:
             multicall.add(method)
-
+        
         multicall.call()
 
 
 def _build_class_methods(class_obj):
     # multicall add class
-    caller = lambda self, multicall, method, *args:\
+    caller = lambda self, multicall, method, *args: \
         multicall.add(method, self.rpc_id, *args)
-
+    
     caller.__doc__ = """Same as Multicall.add(), but with automatic inclusion
                         of the rpc_id
 
@@ -480,7 +512,7 @@ def __check_supported_methods(rt):
                              rtorrent.tracker.methods +
                              rtorrent.peer.methods])
     all_methods = set(rt._get_rpc_methods())
-
+    
     print('Methods NOT in supported methods')
     pprint(all_methods - supported_methods)
     print('Supported methods NOT in all methods')
@@ -558,7 +590,7 @@ methods = [
            @return: time (posix)
            @rtype: int""",
            ),
-
+    
     # MODIFIERS
     Method(RTorrent, 'set_http_proxy_address', 'network.http.proxy_address.set'),
     Method(RTorrent, 'set_max_memory_usage', 'pieces.memory.max.set'),
@@ -645,11 +677,11 @@ _all_methods_list = [methods,
                      ]
 
 class_methods_pair = {
-    RTorrent: methods,
-    rtorrent.file.File: rtorrent.file.methods,
-    torrent.Torrent: rtorrent.torrent.methods,
+    RTorrent                : methods,
+    rtorrent.file.File      : rtorrent.file.methods,
+    torrent.Torrent         : rtorrent.torrent.methods,
     rtorrent.tracker.Tracker: rtorrent.tracker.methods,
-    rtorrent.peer.Peer: rtorrent.peer.methods,
+    rtorrent.peer.Peer      : rtorrent.peer.methods,
 }
 for key, value in class_methods_pair.items():
     rpc._build_rpc_methods(key, value)
