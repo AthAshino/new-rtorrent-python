@@ -142,16 +142,6 @@ class RTorrent:
         return self._get_client_version_tuple() >= MIN_RTORRENT_VERSION
     
     
-    def get_client_version(self):
-        client_version = getattr(self, "client_version")
-        if not client_version:
-            conn = self._get_conn()
-            client_version = conn.system.client_version()
-            setattr(self, "client_version",
-                    client_version)
-        return client_version
-    
-    
     def _get_client_version_tuple(self):
         conn = self._get_conn()
         
